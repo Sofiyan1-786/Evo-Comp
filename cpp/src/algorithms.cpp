@@ -2,141 +2,32 @@
 
 #include <algorithm>
 #include <array>
-#include <bit>
-#include <cmath>
 #include <compare>
-#include <cstdint>
 #include <numeric>
+#include <random>
 #include <ranges>
 #include <stdexcept>
 #include <utility>
 
 namespace {
 
-class PythonRandom {
+class Random {
 public:
-    explicit PythonRandom(std::vector<uint32_t> const& key) {
-        init_by_array(key);
-    }
+    explicit Random(std::mt19937::result_type seed) : engine_(seed) {}
 
     std::vector<size_t> sample(size_t n, size_t k) {
         if (k > n) {
             throw std::runtime_error("sample larger than population");
         }
-        std::vector<size_t> result(k);
-        size_t setsize = 21;
-        if (k > 5) {
-            double exponent = std::ceil(std::log(static_cast<double>(k) * 3) / std::log(4.0));
-            setsize += static_cast<size_t>(std::pow(4.0, exponent));
-        }
-        if (n <= setsize) {
-            std::vector<size_t> pool(n);
-            std::iota(pool.begin(), pool.end(), 0);
-            for (size_t i = 0; i < k; ++i) {
-                size_t j = randbelow(n - i);
-                result[i] = pool[j];
-                pool[j] = pool[n - i - 1];
-            }
-        }
-        else {
-            std::vector<bool> selected(n);
-            for (size_t i = 0; i < k; ++i) {
-                size_t value = randbelow(n);
-                while (selected[value]) {
-                    value = randbelow(n);
-                }
-                selected[value] = true;
-                result[i] = value;
-            }
-        }
-        return result;
+        std::vector<size_t> pool(n);
+        std::iota(pool.begin(), pool.end(), 0);
+        std::shuffle(pool.begin(), pool.end(), engine_);
+        pool.resize(k);
+        return pool;
     }
 
 private:
-    static constexpr size_t N = 624;
-    static constexpr size_t M = 397;
-    static constexpr uint32_t UPPER_MASK = 0x80000000u;
-    static constexpr uint32_t LOWER_MASK = 0x7fffffffu;
-
-    std::array<uint32_t, N> state_ {};
-    size_t index_ = N + 1;
-
-    void init_genrand(uint32_t seed) {
-        state_[0] = seed;
-        for (size_t i = 1; i < N; ++i) {
-            state_[i] = 1812433253u * (state_[i - 1] ^ (state_[i - 1] >> 30)) + i;
-        }
-        index_ = N;
-    }
-
-    void init_by_array(std::vector<uint32_t> const& key) {
-        init_genrand(19650218u);
-        size_t i = 1;
-        size_t j = 0;
-        for (size_t k = std::max(N, key.size()); k != 0; --k) {
-            state_[i] = (state_[i] ^ ((state_[i - 1] ^ (state_[i - 1] >> 30)) * 1664525u)) + key[j] + j;
-            ++i;
-            ++j;
-            if (i >= N) {
-                state_[0] = state_[N - 1];
-                i = 1;
-            }
-            if (j >= key.size()) {
-                j = 0;
-            }
-        }
-        for (size_t k = N - 1; k != 0; --k) {
-            state_[i] = (state_[i] ^ ((state_[i - 1] ^ (state_[i - 1] >> 30)) * 1566083941u)) - i;
-            ++i;
-            if (i >= N) {
-                state_[0] = state_[N - 1];
-                i = 1;
-            }
-        }
-        state_[0] = 0x80000000u;
-        index_ = N;
-    }
-
-    void twist() {
-        constexpr std::array<uint32_t, 2> mag01 { 0u, 0x9908b0dfu };
-        size_t k = 0;
-        for (; k < N - M; ++k) {
-            uint32_t y = (state_[k] & UPPER_MASK) | (state_[k + 1] & LOWER_MASK);
-            state_[k] = state_[k + M] ^ (y >> 1) ^ mag01[y & 1u];
-        }
-        for (; k < N - 1; ++k) {
-            uint32_t y = (state_[k] & UPPER_MASK) | (state_[k + 1] & LOWER_MASK);
-            state_[k] = state_[k + (M - N)] ^ (y >> 1) ^ mag01[y & 1u];
-        }
-        uint32_t y = (state_[N - 1] & UPPER_MASK) | (state_[0] & LOWER_MASK);
-        state_[N - 1] = state_[M - 1] ^ (y >> 1) ^ mag01[y & 1u];
-        index_ = 0;
-    }
-
-    uint32_t genrand_uint32() {
-        if (index_ >= N) {
-            twist();
-        }
-        uint32_t y = state_[index_++];
-        y ^= y >> 11;
-        y ^= (y << 7) & 0x9d2c5680u;
-        y ^= (y << 15) & 0xefc60000u;
-        y ^= y >> 18;
-        return y;
-    }
-
-    uint32_t getrandbits(unsigned int bits) {
-        return genrand_uint32() >> (32 - bits);
-    }
-
-    size_t randbelow(size_t n) {
-        unsigned int bits = std::bit_width(n);
-        uint32_t value = getrandbits(bits);
-        while (value >= n) {
-            value = getrandbits(bits);
-        }
-        return value;
-    }
+    std::mt19937 engine_;
 };
 
 // Find the node with the lowest cost delta (node+edge cost) to `start_node`.
@@ -513,7 +404,7 @@ TspResult two_regret_r1_d2_greedy_cycle(TspParams params) {
 }
 
 TspResult random_solution_baseline(TspParams params) {
-    static PythonRandom generator({ 123 });
+    static Random generator(123);
     std::vector<size_t> tour = generator.sample(params.node_costs.size(), params.target_count);
     float cost = objective(tour, params.distance_matrix, params.node_costs);
     return { std::move(tour), cost };
