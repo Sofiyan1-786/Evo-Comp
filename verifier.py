@@ -22,14 +22,28 @@ ALGORITHMS = [
     "nearest-neighbor-end",
     "nearest-neighbor-anywhere",
     "greedy-cycle",
-    "2-regret-nearest-neighbor-anywhere",
-    "2-regret-greedy-cycle",
-    "2-regret-weighted-nearest-neighbor-anywhere",
-    "2-regret-weighted-greedy-cycle",
+    "2-regret-r1-d1-nearest-neighbor-anywhere",
+    "2-regret-r1-d1-greedy-cycle",
+    "2-regret-r1-d0-nearest-neighbor-anywhere",
+    "2-regret-r1-d0-greedy-cycle",
+    "2-regret-r2-d1-nearest-neighbor-anywhere",
+    "2-regret-r2-d1-greedy-cycle",
+    "2-regret-r1-d2-nearest-neighbor-anywhere",
+    "2-regret-r1-d2-greedy-cycle",
 ]
 RESULT_RE = re.compile(
     r"cost:\s*(-?\d+(?:\.\d+)?),\s*time:\s*([0-9]+(?:\.[0-9]+)?)\s*s"
 )
+READABLE_NAMES = {
+    "2-regret-r1-d1-nearest-neighbor-anywhere": "2-regret (regret=1, delta=1) nearest-neighbor-anywhere",
+    "2-regret-r1-d1-greedy-cycle": "2-regret (regret=1, delta=1) greedy-cycle",
+    "2-regret-r1-d0-nearest-neighbor-anywhere": "2-regret (regret=1, delta=0) nearest-neighbor-anywhere",
+    "2-regret-r1-d0-greedy-cycle": "2-regret (regret=1, delta=0) greedy-cycle",
+    "2-regret-r2-d1-nearest-neighbor-anywhere": "2-regret (regret=2, delta=1) nearest-neighbor-anywhere",
+    "2-regret-r2-d1-greedy-cycle": "2-regret (regret=2, delta=1) greedy-cycle",
+    "2-regret-r1-d2-nearest-neighbor-anywhere": "2-regret (regret=1, delta=2) nearest-neighbor-anywhere",
+    "2-regret-r1-d2-greedy-cycle": "2-regret (regret=1, delta=2) greedy-cycle",
+}
 
 
 def load_instance(path):
@@ -161,10 +175,6 @@ def verify(name, instance):
     if not match:
         return f"wrong {name} {instance}: malformed score/time"
     reported = float(match.group(1))
-    elapsed = float(match.group(2))
-    print(
-        f"{name} {instance}: min {values[min_index]}, max {values[max_index]}, mean {mean:.2f}, time {elapsed:.3f} s"
-    )
 
     if reported != values[min_index]:
         return (
@@ -176,22 +186,28 @@ def verify(name, instance):
             return f"wrong {name} {instance}: checker objective mismatch for solution {index}"
 
     VIS_DIR.mkdir(exist_ok=True)
+    label = READABLE_NAMES.get(name, name)
     visualize(
         coords,
         costs,
         tours[min_index],
-        f"{name} {instance} min (objective {values[min_index]})",
+        f"{label} {instance} min (objective {values[min_index]})",
         VIS_DIR / f"{name}_{instance}_min.png",
     )
     visualize(
         coords,
         costs,
         tours[max_index],
-        f"{name} {instance} max (objective {values[max_index]})",
+        f"{label} {instance} max (objective {values[max_index]})",
         VIS_DIR / f"{name}_{instance}_max.png",
     )
 
-    return None
+    return {"min": values[min_index], "max": values[max_index], "avg": mean}
+
+
+def format_metric(value, best):
+    text = f"{value:.2f}" if isinstance(value, float) else str(value)
+    return f"**{text}**" if value == best else text
 
 
 def main():
@@ -201,12 +217,33 @@ def main():
             print(f"wrong unknown algorithm: {name}", file=sys.stderr)
             return 1
     started = time.perf_counter()
+    results = {instance: {} for instance in INSTANCES}
     for name in names:
         for instance in INSTANCES:
-            error = verify(name, instance)
-            if error:
-                print(error, file=sys.stderr)
+            result = verify(name, instance)
+            if isinstance(result, str):
+                print(result, file=sys.stderr)
                 return 1
+            results[instance][name] = result
+
+    for instance in INSTANCES:
+        instance_results = results[instance]
+        best_min = min(result["min"] for result in instance_results.values())
+        best_max = min(result["max"] for result in instance_results.values())
+        best_avg = min(result["avg"] for result in instance_results.values())
+        print(f"### {instance}")
+        print()
+        print("|method|min|max|avg|")
+        print("|---|---:|---:|---:|")
+        for name in names:
+            result = instance_results[name]
+            print(
+                f"|{READABLE_NAMES.get(name, name)}|{format_metric(result['min'], best_min)}|"
+                f"{format_metric(result['max'], best_max)}|"
+                f"{format_metric(result['avg'], best_avg)}|"
+            )
+        print()
+
     print(f"total: {time.perf_counter() - started:.3f} s")
     print("ok", file=sys.stderr)
     return 0

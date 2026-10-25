@@ -23,10 +23,14 @@ int main(int argc, char** argv) {
             { "nearest-neighbor-end", &nearest_neighbor_end },
             { "nearest-neighbor-anywhere", &nearest_neighbor_solution_all_positions },
             { "greedy-cycle", &greedy_cycle },
-            { "2-regret-nearest-neighbor-anywhere", &two_regret_nearest_neighbor_anywhere },
-            { "2-regret-greedy-cycle", &two_regret_greedy_cycle },
-            { "2-regret-weighted-nearest-neighbor-anywhere", &two_regret_weighted_nearest_neighbor_anywhere },
-            { "2-regret-weighted-greedy-cycle", &two_regret_weighted_greedy_cycle },
+            { "2-regret-r1-d1-nearest-neighbor-anywhere", &two_regret_r1_d1_nearest_neighbor_anywhere },
+            { "2-regret-r1-d1-greedy-cycle", &two_regret_r1_d1_greedy_cycle },
+            { "2-regret-r1-d0-nearest-neighbor-anywhere", &two_regret_r1_d0_nearest_neighbor_anywhere },
+            { "2-regret-r1-d0-greedy-cycle", &two_regret_r1_d0_greedy_cycle },
+            { "2-regret-r2-d1-nearest-neighbor-anywhere", &two_regret_r2_d1_nearest_neighbor_anywhere },
+            { "2-regret-r2-d1-greedy-cycle", &two_regret_r2_d1_greedy_cycle },
+            { "2-regret-r1-d2-nearest-neighbor-anywhere", &two_regret_r1_d2_nearest_neighbor_anywhere },
+            { "2-regret-r1-d2-greedy-cycle", &two_regret_r1_d2_greedy_cycle },
         };
 
         auto algorithm = algorithms.find(argv[1]);

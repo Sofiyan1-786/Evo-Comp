@@ -416,49 +416,97 @@ TspResult two_regret(TspParams params, TwoRegretParams heuristic, PlacementFn pl
 
 }
 
-TspResult two_regret_nearest_neighbor_anywhere(TspParams params) {
+TspResult two_regret_r1_d1_nearest_neighbor_anywhere(TspParams params) {
     return two_regret(
         params,
         TwoRegretParams {
-            1.0f,
-            1.0f,
-            0.0f,
+            .second_node_weight = 1.0f,
+            .regret_weight = 1.0f,
+            .delta_weight = 1.0f,
         },
         nearest_neighbor_anywhere_placements
     );
 }
 
-TspResult two_regret_greedy_cycle(TspParams params) {
+TspResult two_regret_r1_d1_greedy_cycle(TspParams params) {
     return two_regret(
         params,
         TwoRegretParams {
-            2.0f,
-            1.0f,
-            0.0f,
+            .second_node_weight = 2.0f,
+            .regret_weight = 1.0f,
+            .delta_weight = 1.0f,
         },
         greedy_cycle_placements
     );
 }
 
-TspResult two_regret_weighted_nearest_neighbor_anywhere(TspParams params) {
+TspResult two_regret_r1_d0_nearest_neighbor_anywhere(TspParams params) {
     return two_regret(
         params,
         TwoRegretParams {
-            1.0f,
-            1.0f,
-            1.0f,
+            .second_node_weight = 1.0f,
+            .regret_weight = 1.0f,
+            .delta_weight = 0.0f,
         },
         nearest_neighbor_anywhere_placements
     );
 }
 
-TspResult two_regret_weighted_greedy_cycle(TspParams params) {
+TspResult two_regret_r1_d0_greedy_cycle(TspParams params) {
     return two_regret(
         params,
         TwoRegretParams {
-            2.0f,
-            1.0f,
-            1.0f,
+            .second_node_weight = 2.0f,
+            .regret_weight = 1.0f,
+            .delta_weight = 0.0f,
+        },
+        greedy_cycle_placements
+    );
+}
+
+TspResult two_regret_r2_d1_nearest_neighbor_anywhere(TspParams params) {
+    return two_regret(
+        params,
+        TwoRegretParams {
+            .second_node_weight = 1.0f,
+            .regret_weight = 2.0f,
+            .delta_weight = 1.0f,
+        },
+        nearest_neighbor_anywhere_placements
+    );
+}
+
+TspResult two_regret_r2_d1_greedy_cycle(TspParams params) {
+    return two_regret(
+        params,
+        TwoRegretParams {
+            .second_node_weight = 2.0f,
+            .regret_weight = 2.0f,
+            .delta_weight = 1.0f,
+        },
+        greedy_cycle_placements
+    );
+}
+
+TspResult two_regret_r1_d2_nearest_neighbor_anywhere(TspParams params) {
+    return two_regret(
+        params,
+        TwoRegretParams {
+            .second_node_weight = 1.0f,
+            .regret_weight = 1.0f,
+            .delta_weight = 2.0f,
+        },
+        nearest_neighbor_anywhere_placements
+    );
+}
+
+TspResult two_regret_r1_d2_greedy_cycle(TspParams params) {
+    return two_regret(
+        params,
+        TwoRegretParams {
+            .second_node_weight = 2.0f,
+            .regret_weight = 1.0f,
+            .delta_weight = 2.0f,
         },
         greedy_cycle_placements
     );
