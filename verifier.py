@@ -22,6 +22,10 @@ ALGORITHMS = [
     "nearest-neighbor-end",
     "nearest-neighbor-anywhere",
     "greedy-cycle",
+    "2-regret-nearest-neighbor-anywhere",
+    "2-regret-greedy-cycle",
+    "2-regret-weighted-nearest-neighbor-anywhere",
+    "2-regret-weighted-greedy-cycle",
 ]
 RESULT_RE = re.compile(
     r"cost:\s*(-?\d+(?:\.\d+)?),\s*time:\s*([0-9]+(?:\.[0-9]+)?)\s*s"
