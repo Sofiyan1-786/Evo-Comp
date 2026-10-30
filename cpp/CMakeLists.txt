@@ -9,5 +9,6 @@ add_executable(tsp
     src/main.cpp
     src/instance.cpp
     src/algorithms.cpp
+    src/local_search.cpp
 )
 target_include_directories(tsp PRIVATE include)

@@ -1,5 +1,4 @@
 #include "tsp.hpp"
-
 #include <algorithm>
 #include <chrono>
 #include <exception>
@@ -31,6 +30,14 @@ int main(int argc, char** argv) {
             { "2-regret-r2-d1-greedy-cycle", &two_regret_r2_d1_greedy_cycle },
             { "2-regret-r1-d2-nearest-neighbor-anywhere", &two_regret_r1_d2_nearest_neighbor_anywhere },
             { "2-regret-r1-d2-greedy-cycle", &two_regret_r1_d2_greedy_cycle },
+            { "ls-steepest-two-edges-random", &local_search_steepest_two_edges_random },
+            { "ls-steepest-two-nodes-random", &local_search_steepest_two_nodes_random },
+            { "ls-steepest-two-edges-greedy", &local_search_steepest_two_edges_greedy },
+            { "ls-steepest-two-nodes-greedy", &local_search_steepest_two_nodes_greedy },
+            { "ls-greedy-two-edges-random", &local_search_greedy_two_edges_random },
+            { "ls-greedy-two-nodes-random", &local_search_greedy_two_nodes_random },
+            { "ls-greedy-two-edges-greedy", &local_search_greedy_two_edges_greedy },
+            { "ls-greedy-two-nodes-greedy", &local_search_greedy_two_nodes_greedy },
         };
 
         auto algorithm = algorithms.find(argv[1]);
@@ -51,13 +58,26 @@ int main(int argc, char** argv) {
         TspParams params { instance.distance_matrix, instance.node_costs, target_count, 0 };
         std::vector<TspResult> results;
         results.reserve(attempts);
-        auto started = std::chrono::steady_clock::now();
+        // auto started = std::chrono::steady_clock::now();
+        // for (size_t start_node = 0; start_node < attempts; ++start_node) {
+        //     params.start_node = start_node;
+        //     results.push_back(algorithm->second(params));
+        // }
+        // auto finished = std::chrono::steady_clock::now();
+        // double seconds = std::chrono::duration<double>(finished - started).count();
+
+        std::vector<double> attempt_times;
+        attempt_times.reserve(attempts);
+        double seconds = 0;
         for (size_t start_node = 0; start_node < attempts; ++start_node) {
             params.start_node = start_node;
+            auto t0 = std::chrono::steady_clock::now();
             results.push_back(algorithm->second(params));
+            auto t1 = std::chrono::steady_clock::now();
+            double took = std::chrono::duration<double>(t1 - t0).count();
+            attempt_times.push_back(took);
+            seconds += took;
         }
-        auto finished = std::chrono::steady_clock::now();
-        double seconds = std::chrono::duration<double>(finished - started).count();
 
         // Sanity checks
         for (TspResult const& result : results) {
@@ -79,6 +99,11 @@ int main(int argc, char** argv) {
             }
             std::cout << '\n';
         }
+        std::cerr << "attempt_times:";
+        for (double took : attempt_times) {
+            std::cerr << ' ' << took;
+        }
+        std::cerr << '\n';
         std::cerr << "cost: " << static_cast<long long>(min_cost) << ", time: " << std::fixed << std::setprecision(3) << seconds
                   << " s\n";
         return 0;

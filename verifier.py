@@ -30,9 +30,23 @@ ALGORITHMS = [
     "2-regret-r2-d1-greedy-cycle",
     "2-regret-r1-d2-nearest-neighbor-anywhere",
     "2-regret-r1-d2-greedy-cycle",
+    # lab#3
+    "ls-steepest-two-edges-random",
+    "ls-steepest-two-nodes-random",
+    "ls-steepest-two-edges-greedy",
+    "ls-steepest-two-nodes-greedy",
+    "ls-greedy-two-edges-random",
+    "ls-greedy-two-nodes-random",
+    "ls-greedy-two-edges-greedy",
+    "ls-greedy-two-nodes-greedy",
+
 ]
+
 RESULT_RE = re.compile(
     r"cost:\s*(-?\d+(?:\.\d+)?),\s*time:\s*([0-9]+(?:\.[0-9]+)?)\s*s"
+)
+ATTEMPT_TIMES_RE = re.compile(
+    r"attempt_times:\s*([0-9.eE+-]+(?:\s+[0-9.eE+-]+)*)"
 )
 READABLE_NAMES = {
     "2-regret-r1-d1-nearest-neighbor-anywhere": "2-regret (regret=1, delta=1) nearest-neighbor-anywhere",
@@ -43,6 +57,14 @@ READABLE_NAMES = {
     "2-regret-r2-d1-greedy-cycle": "2-regret (regret=2, delta=1) greedy-cycle",
     "2-regret-r1-d2-nearest-neighbor-anywhere": "2-regret (regret=1, delta=2) nearest-neighbor-anywhere",
     "2-regret-r1-d2-greedy-cycle": "2-regret (regret=1, delta=2) greedy-cycle",
+    "ls-steepest-two-edges-random": "LS steepest, two-edges, random start",
+    "ls-steepest-two-nodes-random": "LS steepest, two-nodes, random start",
+    "ls-steepest-two-edges-greedy": "LS steepest, two-edges, greedy start",
+    "ls-steepest-two-nodes-greedy": "LS steepest, two-nodes, greedy start",
+    "ls-greedy-two-edges-random": "LS greedy, two-edges, random start",
+    "ls-greedy-two-nodes-random": "LS greedy, two-nodes, random start",
+    "ls-greedy-two-edges-greedy": "LS greedy, two-edges, greedy start",
+    "ls-greedy-two-nodes-greedy": "LS greedy, two-nodes, greedy start",
 }
 
 
@@ -176,6 +198,15 @@ def verify(name, instance):
         return f"wrong {name} {instance}: malformed score/time"
     reported = float(match.group(1))
 
+    times_match = ATTEMPT_TIMES_RE.search(process.stderr)
+    if not times_match:
+        return f"wrong {name} {instance}: malformed attempt_times"
+    times = [float(x) for x in times_match.group(1).split()]
+    if len(times) != attempts:
+        return (
+            f"wrong {name} {instance}: expected {attempts} attempt times, got {len(times)}"
+        )
+
     if reported != values[min_index]:
         return (
             f"wrong {name} {instance}: score {reported:g}, expected {values[min_index]}"
@@ -202,12 +233,17 @@ def verify(name, instance):
         VIS_DIR / f"{name}_{instance}_max.png",
     )
 
-    return {"min": values[min_index], "max": values[max_index], "avg": mean}
+    return {"values": values, "times": times}
 
 
-def format_metric(value, best):
-    text = f"{value:.2f}" if isinstance(value, float) else str(value)
-    return f"**{text}**" if value == best else text
+def objective_cell(values):
+    return f"{sum(values)/len(values):.2f} ({min(values)} – {max(values)})"
+
+
+def time_cell(times):
+    return (
+        f"{sum(times)/len(times):.4f} ({min(times):.4f} – {max(times):.4f})"
+    )
 
 
 def main():
@@ -226,23 +262,27 @@ def main():
                 return 1
             results[instance][name] = result
 
-    for instance in INSTANCES:
-        instance_results = results[instance]
-        best_min = min(result["min"] for result in instance_results.values())
-        best_max = min(result["max"] for result in instance_results.values())
-        best_avg = min(result["avg"] for result in instance_results.values())
-        print(f"### {instance}")
-        print()
-        print("|method|min|max|avg|")
-        print("|---|---:|---:|---:|")
-        for name in names:
-            result = instance_results[name]
-            print(
-                f"|{READABLE_NAMES.get(name, name)}|{format_metric(result['min'], best_min)}|"
-                f"{format_metric(result['max'], best_max)}|"
-                f"{format_metric(result['avg'], best_avg)}|"
-            )
-        print()
+    print("### objective")
+    print()
+    print("|method|" + "|".join(INSTANCES) + "|")
+    print("|---|" + "|".join(["---:" for _ in INSTANCES]) + "|")
+    for name in names:
+        row = [READABLE_NAMES.get(name, name)]
+        for instance in INSTANCES:
+            row.append(objective_cell(results[instance][name]["values"]))
+        print("|" + "|".join(row) + "|")
+    print()
+
+    print("### time")
+    print()
+    print("|method|" + "|".join(INSTANCES) + "|")
+    print("|---|" + "|".join(["---:" for _ in INSTANCES]) + "|")
+    for name in names:
+        row = [READABLE_NAMES.get(name, name)]
+        for instance in INSTANCES:
+            row.append(time_cell(results[instance][name]["times"]))
+        print("|" + "|".join(row) + "|")
+    print()
 
     print(f"total: {time.perf_counter() - started:.3f} s")
     print("ok", file=sys.stderr)
