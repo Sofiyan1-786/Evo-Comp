@@ -233,6 +233,8 @@ def verify(name, instance):
         VIS_DIR / f"{name}_{instance}_max.png",
     )
 
+    print(f"[min], [{name}], [{instance}], [{tours[min_index]}],")
+    print(f"[max], [{name}], [{instance}], [{tours[max_index]}],")
     return {"values": values, "times": times}
 
 
