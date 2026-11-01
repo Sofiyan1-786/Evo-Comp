@@ -4,6 +4,7 @@
 #include <numeric>
 #include <random>
 #include <vector>
+#include <ranges>
 
 namespace {
 
@@ -139,32 +140,61 @@ TspResult local_search(TspParams params, bool steepest, IntraKind intra, bool ra
             apply_move(tour, best, intra, selected);
         }
     } else {
-        std::vector<Move> moves;
-        moves.reserve(m * (m - 1) / 2 + m * (n - m));
+        // Two small O(n) index vectors (100 and 200 elements) instead of 14,950 moves
+        std::vector<size_t> tour_idx(m);
+        std::iota(tour_idx.begin(), tour_idx.end(), 0);
+        std::vector<size_t> node_idx(n);
+        std::iota(node_idx.begin(), node_idx.end(), 0);
+
+        // Lazy generator for unselected nodes in randomized order (sppmacd's exact pattern)
+        auto unvisited_nodes = [&]() {
+            return node_idx | std::views::filter([&selected](size_t v) { return !selected[v]; });
+        };
+
         while (true) {
-            // 1) enumerate move DESCRIPTORS only 
-            //  no deltas evaluated here
-            moves.clear();
-            for (size_t i = 0; i + 1 < m; ++i) {
-                for (size_t j = i + 1; j < m; ++j) {
-                    if (intra == IntraKind::TwoEdges && skipped_two_edges(i, j, m)) continue;
-                    moves.push_back({ MoveKind::Intra, i, j });
-                }
-            }
-            for (size_t p = 0; p < m; ++p) {
-                for (size_t v = 0; v < n; ++v) {
-                    if (!selected[v]) moves.push_back({ MoveKind::Inter, p, v });
-                }
-            }
-            // 2) Fisher-Yates shuffle of BOTH kinds together
-            std::shuffle(moves.begin(), moves.end(), rng);
-            // 3) evaluate in random order, stop at first improving move
+            std::shuffle(tour_idx.begin(), tour_idx.end(), rng);
+            std::shuffle(node_idx.begin(), node_idx.end(), rng);
             bool improved = false;
-            for (Move const& move : moves) {
-                if (move_delta(tour, move, intra, dm, costs) < 0) {
-                    apply_move(tour, move, intra, selected);
-                    improved = true;
-                    break;
+
+            for (size_t idx_a = 0; idx_a < m && !improved; ++idx_a) {
+                size_t i = tour_idx[idx_a];
+                bool intra_first = (rng() & 1u) != 0;
+
+                // Lazy generator for intra-route moves paired with position i
+                auto intra_moves = std::views::iota(idx_a + 1, m)
+                    | std::views::transform([&](size_t idx_b) {
+                          size_t u = i, w = tour_idx[idx_b];
+                          if (u > w) std::swap(u, w);
+                          return Move { MoveKind::Intra, u, w };
+                      })
+                    | std::views::filter([&](Move mv) {
+                          return !(intra == IntraKind::TwoEdges && skipped_two_edges(mv.a, mv.b, m));
+                      });
+
+                // Lazy generator for inter-route moves at position i
+                auto inter_moves = unvisited_nodes()
+                    | std::views::transform([i](size_t v) {
+                          return Move { MoveKind::Inter, i, v };
+                      });
+
+                for (int pass = 0; pass < 2 && !improved; ++pass) {
+                    if ((pass == 0) == intra_first) {
+                        for (Move move : intra_moves) {
+                            if (move_delta(tour, move, intra, dm, costs) < 0) {
+                                apply_move(tour, move, intra, selected);
+                                improved = true;
+                                break;
+                            }
+                        }
+                    } else {
+                        for (Move move : inter_moves) {
+                            if (move_delta(tour, move, intra, dm, costs) < 0) {
+                                apply_move(tour, move, intra, selected);
+                                improved = true;
+                                break;
+                            }
+                        }
+                    }
                 }
             }
             if (!improved) break;
