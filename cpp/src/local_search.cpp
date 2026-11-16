@@ -3,8 +3,8 @@
 #include <cstddef>
 #include <numeric>
 #include <random>
-#include <vector>
 #include <ranges>
+#include <vector>
 
 namespace {
 
@@ -13,8 +13,8 @@ enum class MoveKind { Intra, Inter };
 
 struct Move {
     MoveKind kind;
-    size_t a;   // Intra: position i | Inter: position p
-    size_t b;   // Intra: position j | Inter: unselected node v
+    size_t a; // Intra: position i | Inter: position p
+    size_t b; // Intra: position j | Inter: unselected node v
 };
 
 std::vector<size_t> random_tour(size_t n, size_t k, std::mt19937& rng) {
@@ -57,20 +57,16 @@ float delta_two_nodes(std::vector<size_t> const& t, size_t i, size_t j, SquareMa
 }
 
 // delta = edge change at position p + node cost change C[v] - C[t[p]]
-float delta_exchange(std::vector<size_t> const& t, size_t p, size_t v,
-                     SquareMatrix const& dm, std::vector<float> const& costs) {
+float delta_exchange(std::vector<size_t> const& t, size_t p, size_t v, SquareMatrix const& dm, std::vector<float> const& costs) {
     size_t m = t.size();
     size_t prev = (p + m - 1) % m;
     size_t next = (p + 1) % m;
-    return dm(t[prev], v) + dm(v, t[next]) - dm(t[prev], t[p]) - dm(t[p], t[next])
-        + costs[v] - costs[t[p]];
+    return dm(t[prev], v) + dm(v, t[next]) - dm(t[prev], t[p]) - dm(t[p], t[next]) + costs[v] - costs[t[p]];
 }
 
-float move_delta(std::vector<size_t> const& t, Move move, IntraKind intra,
-                 SquareMatrix const& dm, std::vector<float> const& costs) {
+float move_delta(std::vector<size_t> const& t, Move move, IntraKind intra, SquareMatrix const& dm, std::vector<float> const& costs) {
     if (move.kind == MoveKind::Intra) {
-        return intra == IntraKind::TwoEdges ? delta_two_edges(t, move.a, move.b, dm)
-                                            : delta_two_nodes(t, move.a, move.b, dm);
+        return intra == IntraKind::TwoEdges ? delta_two_edges(t, move.a, move.b, dm) : delta_two_nodes(t, move.a, move.b, dm);
     }
     return delta_exchange(t, move.a, move.b, dm, costs);
 }
@@ -79,14 +75,15 @@ void apply_move(std::vector<size_t>& t, Move move, IntraKind intra, std::vector<
     if (move.kind == MoveKind::Intra) {
         if (intra == IntraKind::TwoEdges) {
             // 2-opt
-            std::reverse(t.begin() + move.a, t.begin() + move.b + 1);   
-        } else {
+            std::reverse(t.begin() + move.a, t.begin() + move.b + 1);
+        }
+        else {
             // swap
-            std::swap(t[move.a], t[move.b]);                            
+            std::swap(t[move.a], t[move.b]);
         }
         return;
     }
-    selected[t[move.a]] = false;  
+    selected[t[move.a]] = false;
     // inter: node exchange
     t[move.a] = move.b;
     selected[move.b] = true;
@@ -106,9 +103,7 @@ TspResult local_search(TspParams params, bool steepest, IntraKind intra, bool ra
     // seed per attempt = 200 reproducible, distinct runs
     std::mt19937 rng(static_cast<unsigned>(params.start_node * 9973u + 7u));
 
-    std::vector<size_t> tour = random_start
-        ? random_tour(n, m, rng)
-        : two_regret_r1_d2_greedy_cycle(params).tour;
+    std::vector<size_t> tour = random_start ? random_tour(n, m, rng) : two_regret_r1_d2_greedy_cycle(params).tour;
     std::vector<bool> selected(n, false);
     for (size_t node : tour) {
         selected[node] = true;
@@ -117,29 +112,39 @@ TspResult local_search(TspParams params, bool steepest, IntraKind intra, bool ra
     if (steepest) {
         while (true) {
             Move best {};
-            float best_delta = 0;                       
+            float best_delta = 0;
             // need strictly negative
             for (size_t i = 0; i + 1 < m; ++i) {
                 for (size_t j = i + 1; j < m; ++j) {
-                    if (intra == IntraKind::TwoEdges && skipped_two_edges(i, j, m)) continue;
+                    if (intra == IntraKind::TwoEdges && skipped_two_edges(i, j, m))
+                        continue;
                     Move move { MoveKind::Intra, i, j };
                     float delta = move_delta(tour, move, intra, dm, costs);
-                    if (delta < best_delta) { best = move; best_delta = delta; }
+                    if (delta < best_delta) {
+                        best = move;
+                        best_delta = delta;
+                    }
                 }
             }
             for (size_t p = 0; p < m; ++p) {
                 for (size_t v = 0; v < n; ++v) {
-                    if (selected[v]) continue;
+                    if (selected[v])
+                        continue;
                     Move move { MoveKind::Inter, p, v };
                     float delta = move_delta(tour, move, intra, dm, costs);
-                    if (delta < best_delta) { best = move; best_delta = delta; }
+                    if (delta < best_delta) {
+                        best = move;
+                        best_delta = delta;
+                    }
                 }
             }
             // local optimum
-            if (best_delta >= 0) break;                 
+            if (best_delta >= 0)
+                break;
             apply_move(tour, best, intra, selected);
         }
-    } else {
+    }
+    else {
         // Two small O(n) index vectors (100 and 200 elements) instead of 14,950 moves
         std::vector<size_t> tour_idx(m);
         std::iota(tour_idx.begin(), tour_idx.end(), 0);
@@ -147,9 +152,7 @@ TspResult local_search(TspParams params, bool steepest, IntraKind intra, bool ra
         std::iota(node_idx.begin(), node_idx.end(), 0);
 
         // Lazy generator for unselected nodes in randomized order (sppmacd's exact pattern)
-        auto unvisited_nodes = [&]() {
-            return node_idx | std::views::filter([&selected](size_t v) { return !selected[v]; });
-        };
+        auto unvisited_nodes = [&]() { return node_idx | std::views::filter([&selected](size_t v) { return !selected[v]; }); };
 
         while (true) {
             std::shuffle(tour_idx.begin(), tour_idx.end(), rng);
@@ -161,21 +164,16 @@ TspResult local_search(TspParams params, bool steepest, IntraKind intra, bool ra
                 bool intra_first = (rng() & 1u) != 0;
 
                 // Lazy generator for intra-route moves paired with position i
-                auto intra_moves = std::views::iota(idx_a + 1, m)
-                    | std::views::transform([&](size_t idx_b) {
-                          size_t u = i, w = tour_idx[idx_b];
-                          if (u > w) std::swap(u, w);
-                          return Move { MoveKind::Intra, u, w };
-                      })
-                    | std::views::filter([&](Move mv) {
-                          return !(intra == IntraKind::TwoEdges && skipped_two_edges(mv.a, mv.b, m));
-                      });
+                auto intra_moves = std::views::iota(idx_a + 1, m) | std::views::transform([&](size_t idx_b) {
+                                       size_t u = i, w = tour_idx[idx_b];
+                                       if (u > w)
+                                           std::swap(u, w);
+                                       return Move { MoveKind::Intra, u, w };
+                                   })
+                    | std::views::filter([&](Move mv) { return !(intra == IntraKind::TwoEdges && skipped_two_edges(mv.a, mv.b, m)); });
 
                 // Lazy generator for inter-route moves at position i
-                auto inter_moves = unvisited_nodes()
-                    | std::views::transform([i](size_t v) {
-                          return Move { MoveKind::Inter, i, v };
-                      });
+                auto inter_moves = unvisited_nodes() | std::views::transform([i](size_t v) { return Move { MoveKind::Inter, i, v }; });
 
                 for (int pass = 0; pass < 2 && !improved; ++pass) {
                     if ((pass == 0) == intra_first) {
@@ -186,7 +184,8 @@ TspResult local_search(TspParams params, bool steepest, IntraKind intra, bool ra
                                 break;
                             }
                         }
-                    } else {
+                    }
+                    else {
                         for (Move move : inter_moves) {
                             if (move_delta(tour, move, intra, dm, costs) < 0) {
                                 apply_move(tour, move, intra, selected);
@@ -197,11 +196,12 @@ TspResult local_search(TspParams params, bool steepest, IntraKind intra, bool ra
                     }
                 }
             }
-            if (!improved) break;
+            if (!improved)
+                break;
         }
     }
 
-    float cost = objective(tour, dm, costs);   // compute BEFORE std::move
+    float cost = objective(tour, dm, costs); // compute BEFORE std::move
     return { std::move(tour), cost };
 }
 
