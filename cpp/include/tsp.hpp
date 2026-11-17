@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstddef>
+#include <functional>
 #include <istream>
 #include <vector>
 
@@ -30,7 +31,12 @@ struct TspResult {
     float cost;
 };
 
-using TspFn = TspResult(TspParams);
+using TspFn = std::function<TspResult(TspParams)>;
+
+// lab#4: the intra-route move type, and the keys a candidate ranking can use
+// (node = node cost, edge = edge length, delta = edge length + node cost)
+enum class IntraKind { TwoEdges, TwoNodes };
+enum class CandidateKey { NodeCost, EdgeCost, NodeEdgeCost };
 
 struct Instance {
     std::vector<std::array<float, 2>> coordinates;
@@ -65,3 +71,5 @@ TspResult local_search_greedy_two_edges_random(TspParams params);
 TspResult local_search_greedy_two_nodes_random(TspParams params);
 TspResult local_search_greedy_two_edges_greedy(TspParams params);
 TspResult local_search_greedy_two_nodes_greedy(TspParams params);
+TspResult local_search_steepest_candidates(TspParams params, IntraKind intra, CandidateKey intra_key,
+                                           CandidateKey inter_key);

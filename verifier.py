@@ -40,6 +40,25 @@ ALGORITHMS = [
     "ls-greedy-two-edges-greedy",
     "ls-greedy-two-nodes-greedy",
 
+    # lab#4: ls-steepest-<two-edges|two-nodes>-random-candidates-intra-<node|edge|delta>-inter-<node|edge|delta>
+    "ls-steepest-two-edges-random-candidates-intra-node-inter-node",
+    "ls-steepest-two-edges-random-candidates-intra-node-inter-edge",
+    "ls-steepest-two-edges-random-candidates-intra-node-inter-delta",
+    "ls-steepest-two-edges-random-candidates-intra-edge-inter-node",
+    "ls-steepest-two-edges-random-candidates-intra-edge-inter-edge",
+    "ls-steepest-two-edges-random-candidates-intra-edge-inter-delta",
+    "ls-steepest-two-edges-random-candidates-intra-delta-inter-node",
+    "ls-steepest-two-edges-random-candidates-intra-delta-inter-edge",
+    "ls-steepest-two-edges-random-candidates-intra-delta-inter-delta",
+    "ls-steepest-two-nodes-random-candidates-intra-node-inter-node",
+    "ls-steepest-two-nodes-random-candidates-intra-node-inter-edge",
+    "ls-steepest-two-nodes-random-candidates-intra-node-inter-delta",
+    "ls-steepest-two-nodes-random-candidates-intra-edge-inter-node",
+    "ls-steepest-two-nodes-random-candidates-intra-edge-inter-edge",
+    "ls-steepest-two-nodes-random-candidates-intra-edge-inter-delta",
+    "ls-steepest-two-nodes-random-candidates-intra-delta-inter-node",
+    "ls-steepest-two-nodes-random-candidates-intra-delta-inter-edge",
+    "ls-steepest-two-nodes-random-candidates-intra-delta-inter-delta",
 ]
 
 RESULT_RE = re.compile(
@@ -57,14 +76,6 @@ READABLE_NAMES = {
     "2-regret-r2-d1-greedy-cycle": "2-regret (regret=2, delta=1) greedy-cycle",
     "2-regret-r1-d2-nearest-neighbor-anywhere": "2-regret (regret=1, delta=2) nearest-neighbor-anywhere",
     "2-regret-r1-d2-greedy-cycle": "2-regret (regret=1, delta=2) greedy-cycle",
-    "ls-steepest-two-edges-random": "LS steepest, two-edges, random start",
-    "ls-steepest-two-nodes-random": "LS steepest, two-nodes, random start",
-    "ls-steepest-two-edges-greedy": "LS steepest, two-edges, greedy start",
-    "ls-steepest-two-nodes-greedy": "LS steepest, two-nodes, greedy start",
-    "ls-greedy-two-edges-random": "LS greedy, two-edges, random start",
-    "ls-greedy-two-nodes-random": "LS greedy, two-nodes, random start",
-    "ls-greedy-two-edges-greedy": "LS greedy, two-edges, greedy start",
-    "ls-greedy-two-nodes-greedy": "LS greedy, two-nodes, greedy start",
 }
 
 

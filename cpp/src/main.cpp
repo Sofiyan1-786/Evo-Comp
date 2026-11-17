@@ -17,7 +17,7 @@ int main(int argc, char** argv) {
             return 2;
         }
 
-        std::unordered_map<std::string, TspFn*> algorithms {
+        std::unordered_map<std::string, TspFn> algorithms {
             { "random", &random_solution_baseline },
             { "nearest-neighbor-end", &nearest_neighbor_end },
             { "nearest-neighbor-anywhere", &nearest_neighbor_solution_all_positions },
@@ -39,6 +39,32 @@ int main(int argc, char** argv) {
             { "ls-greedy-two-edges-greedy", &local_search_greedy_two_edges_greedy },
             { "ls-greedy-two-nodes-greedy", &local_search_greedy_two_nodes_greedy },
         };
+
+        // lab#4 candidates, one entry per key combination:
+        // ls-steepest-<two-edges|two-nodes>-random-candidates-intra-<node|edge|delta>-inter-<node|edge|delta>
+        struct KeyOption {
+            char const* name;
+            CandidateKey key;
+        };
+        struct IntraOption {
+            char const* name;
+            IntraKind kind;
+        };
+        for (IntraOption const& intra :
+             { IntraOption { "two-edges", IntraKind::TwoEdges }, IntraOption { "two-nodes", IntraKind::TwoNodes } }) {
+            for (KeyOption const& intra_key : { KeyOption { "node", CandidateKey::NodeCost }, KeyOption { "edge", CandidateKey::EdgeCost },
+                                                KeyOption { "delta", CandidateKey::NodeEdgeCost } }) {
+                for (KeyOption const& inter_key :
+                     { KeyOption { "node", CandidateKey::NodeCost }, KeyOption { "edge", CandidateKey::EdgeCost },
+                       KeyOption { "delta", CandidateKey::NodeEdgeCost } }) {
+                    std::string name = "ls-steepest-" + std::string(intra.name) + "-random-candidates-intra-" + intra_key.name + "-inter-"
+                        + inter_key.name;
+                    algorithms[name] = [=](TspParams params) {
+                        return local_search_steepest_candidates(params, intra.kind, intra_key.key, inter_key.key);
+                    };
+                }
+            }
+        }
 
         auto algorithm = algorithms.find(argv[1]);
         if (algorithm == algorithms.end()) {
@@ -86,8 +112,7 @@ int main(int argc, char** argv) {
                 throw std::runtime_error("objective mismatch");
             }
         }
-        float min_cost = std::ranges::min(
-            results | std::views::transform([](TspResult const& result) { return result.cost; }));
+        float min_cost = std::ranges::min(results | std::views::transform([](TspResult const& result) { return result.cost; }));
 
         // Write out
         for (TspResult const& result : results) {
@@ -104,8 +129,7 @@ int main(int argc, char** argv) {
             std::cerr << ' ' << took;
         }
         std::cerr << '\n';
-        std::cerr << "cost: " << static_cast<long long>(min_cost) << ", time: " << std::fixed << std::setprecision(3) << seconds
-                  << " s\n";
+        std::cerr << "cost: " << static_cast<long long>(min_cost) << ", time: " << std::fixed << std::setprecision(3) << seconds << " s\n";
         return 0;
     } catch (std::exception const& error) {
         std::cerr << "error: " << error.what() << '\n';
