@@ -59,6 +59,7 @@ ALGORITHMS = [
     "ls-steepest-two-nodes-random-candidates-intra-delta-inter-node",
     "ls-steepest-two-nodes-random-candidates-intra-delta-inter-edge",
     "ls-steepest-two-nodes-random-candidates-intra-delta-inter-delta",
+    "ls-steepest-two-edges-random-lm",
 ]
 
 RESULT_RE = re.compile(
@@ -76,6 +77,8 @@ READABLE_NAMES = {
     "2-regret-r2-d1-greedy-cycle": "2-regret (regret=2, delta=1) greedy-cycle",
     "2-regret-r1-d2-nearest-neighbor-anywhere": "2-regret (regret=1, delta=2) nearest-neighbor-anywhere",
     "2-regret-r1-d2-greedy-cycle": "2-regret (regret=1, delta=2) greedy-cycle",
+    # lab#5
+    "ls-steepest-two-edges-random-lm": "LS steepest, two-edges, random start (LM)",
 }
 
 

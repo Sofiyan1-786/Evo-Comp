@@ -38,6 +38,8 @@ int main(int argc, char** argv) {
             { "ls-greedy-two-nodes-random", &local_search_greedy_two_nodes_random },
             { "ls-greedy-two-edges-greedy", &local_search_greedy_two_edges_greedy },
             { "ls-greedy-two-nodes-greedy", &local_search_greedy_two_nodes_greedy },
+            // Lab funf
+            { "ls-steepest-two-edges-random-lm", &local_search_steepest_two_edges_random_lm },
         };
 
         // lab#4 candidates, one entry per key combination:

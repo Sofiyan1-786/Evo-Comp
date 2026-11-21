@@ -73,3 +73,5 @@ TspResult local_search_greedy_two_edges_greedy(TspParams params);
 TspResult local_search_greedy_two_nodes_greedy(TspParams params);
 TspResult local_search_steepest_candidates(TspParams params, IntraKind intra, CandidateKey intra_key,
                                            CandidateKey inter_key);
+// lab#5 LM sEarch
+TspResult local_search_steepest_two_edges_random_lm(TspParams params);

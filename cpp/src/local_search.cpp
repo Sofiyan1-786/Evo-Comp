@@ -410,6 +410,188 @@ TspResult local_search_greedy(TspParams params, IntraKind intra, bool random_sta
     return { std::move(tour), cost };
 }
 
+struct LmMove {
+    MoveKind kind;
+    float delta;
+    // Intra (2-opt): removed directed edges e1 = (a, b) and e2 = (c, d)
+    // Inter (swap):  selected node u = a, unselected node v = b, saved neighbors c = u_prev, d = u_next
+    size_t a, b, c, d;
+    bool active = true;
+};
+
+TspResult local_search_steepest_lm(TspParams params) {
+    size_t n = params.node_costs.size();
+    size_t m = params.target_count;
+    SquareMatrix const& dm = params.distance_matrix;
+    std::vector<float> const& costs = params.node_costs;
+
+    // Exact same RNG seed as ls-steepest-two-edges-random for identical 200 starting tours
+    std::mt19937 rng(static_cast<unsigned>(params.start_node * 9973u + 7u));
+    std::vector<size_t> tour = random_tour(n, m, rng);
+
+    // O(1) lookup tables
+    std::vector<uint8_t> selected(n, 0);
+    std::vector<size_t> pos(n, n);
+    std::vector<size_t> next_node(n, n);
+    std::vector<size_t> prev_node(n, n);
+
+    for (size_t u : tour) {
+        selected[u] = 1;
+    }
+
+    auto sync_tour = [&]() {
+        for (size_t i = 0; i < m; ++i) {
+            size_t u = tour[i];
+            pos[u] = i;
+            next_node[u] = tour[(i + 1) % m];
+            prev_node[u] = tour[(i + m - 1) % m];
+        }
+    };
+    sync_tour();
+
+    std::vector<LmMove> lm;
+    lm.reserve(m * (m - 1) + m * (n - m));
+
+    // Full neighborhood evaluation (batch refill), including inverted-edge 2-opt moves
+    auto refill_lm = [&]() {
+        lm.clear();
+        bool has_valid_move = false;
+
+        // 1. Intra-route 2-opt moves (both standard and inverted relative directions)
+        for (size_t i = 0; i + 1 < m; ++i) {
+            size_t a = tour[i];
+            size_t b = tour[(i + 1) % m];
+            for (size_t j = i + 2; j < m; ++j) {
+                if (i == 0 && j + 1 == m) {
+                    continue; // adjacent edges sharing tour[0]
+                }
+                size_t c = tour[j];
+                size_t d = tour[(j + 1) % m];
+                float removed = dm(a, b) + dm(c, d);
+
+                // Standard valid 2-opt: reconnect (a, c) and (b, d)
+                float delta1 = dm(a, c) + dm(b, d) - removed;
+                if (delta1 < 0) {
+                    lm.push_back({ MoveKind::Intra, delta1, a, b, c, d, true });
+                    has_valid_move = true;
+                }
+
+                // Inverted-edge 2-opt: reconnect (a, d) and (b, c), stored with e2 = (d, c)
+                float delta2 = dm(a, d) + dm(b, c) - removed;
+                if (delta2 < 0) {
+                    lm.push_back({ MoveKind::Intra, delta2, a, b, d, c, true });
+                }
+            }
+        }
+
+        // 2. Inter-route node exchange moves (selected u <-> unselected v)
+        for (size_t p = 0; p < m; ++p) {
+            size_t u = tour[p];
+            size_t u_prev = prev_node[u];
+            size_t u_next = next_node[u];
+            float removed = dm(u_prev, u) + dm(u, u_next) + costs[u];
+            for (size_t v = 0; v < n; ++v) {
+                if (selected[v]) {
+                    continue;
+                }
+                float delta = dm(u_prev, v) + dm(v, u_next) + costs[v] - removed;
+                if (delta < 0) {
+                    lm.push_back({ MoveKind::Inter, delta, u, v, u_prev, u_next, true });
+                    has_valid_move = true;
+                }
+            }
+        }
+
+        if (!has_valid_move) {
+            lm.clear();
+            return;
+        }
+
+        std::sort(lm.begin(), lm.end(), [](LmMove const& x, LmMove const& y) {
+            return x.delta < y.delta;
+        });
+    };
+
+    // Initial full evaluation
+    refill_lm();
+
+    while (!lm.empty()) {
+        bool applied = false;
+
+        for (LmMove& mv : lm) {
+            if (!mv.active) {
+                continue;
+            }
+
+            if (mv.kind == MoveKind::Intra) {
+                size_t a = mv.a, b = mv.b, c = mv.c, d = mv.d;
+                bool e1_fwd = selected[a] && (next_node[a] == b);
+                bool e1_rev = selected[a] && (prev_node[a] == b);
+                bool e2_fwd = selected[c] && (next_node[c] == d);
+                bool e2_rev = selected[c] && (prev_node[c] == d);
+
+                // Case 1 (Broken): at least one edge no longer exists -> remove from LM
+                if ((!e1_fwd && !e1_rev) || (!e2_fwd && !e2_rev)) {
+                    mv.active = false;
+                    continue;
+                }
+
+                // Case 2 (Inverted relative direction): keep in LM, skip for now
+                if ((e1_fwd && e2_rev) || (e1_rev && e2_fwd)) {
+                    continue;
+                }
+
+                // Case 3 (Same relative direction: both forward or both reversed): apply 2-opt
+                size_t idx1 = e1_fwd ? pos[a] : pos[b];
+                size_t idx2 = e2_fwd ? pos[c] : pos[d];
+                size_t lo = std::min(idx1, idx2);
+                size_t hi = std::max(idx1, idx2);
+                std::reverse(tour.begin() + lo + 1, tour.begin() + hi + 1);
+                sync_tour();
+
+                mv.active = false;
+                applied = true;
+                break; // restart scan from the very top of LM
+            } else {
+                size_t u = mv.a, v = mv.b, u_prev = mv.c, u_next = mv.d;
+                bool valid = selected[u] && !selected[v]
+                    && ((prev_node[u] == u_prev && next_node[u] == u_next)
+                        || (prev_node[u] == u_next && next_node[u] == u_prev));
+
+                if (!valid) {
+                    mv.active = false;
+                    continue;
+                }
+
+                // Apply inter-route node swap
+                size_t p = pos[u];
+                selected[u] = 0;
+                pos[u] = n;
+                next_node[u] = n;
+                prev_node[u] = n;
+
+                tour[p] = v;
+                selected[v] = 1;
+                sync_tour();
+
+                mv.active = false;
+                applied = true;
+                break; // restart scan from the very top of LM
+            }
+        }
+
+        // Batch refill condition: full pass through LM found 0 applicable moves
+        if (!applied) {
+            refill_lm();
+            // If refill_lm() added 0 improving moves, lm.empty() is true and the while loop terminates
+        }
+    }
+
+    float cost = objective(tour, dm, costs);
+    return { std::move(tour), cost };
+}
+
+
 }
 
 TspResult local_search_steepest_two_edges_random(TspParams params) {
@@ -447,4 +629,9 @@ TspResult local_search_steepest_candidates(TspParams params, IntraKind intra, Ca
         .intra_key = intra_key,
         .inter_key = inter_key,
     });
+}
+
+// Lab 5: ls-steepest-two-edges-random-lm
+TspResult local_search_steepest_two_edges_random_lm(TspParams params)   {
+    return local_search_steepest_lm(params);
 }
