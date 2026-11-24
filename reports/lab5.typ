@@ -60,15 +60,22 @@ The algorithm follows the "alternative" (batch refill) variant: after an accepte
 
 #pseudocode-list(booktabs: true, title: [Applicability of a cached 2-opt move])[
 + _\// $e_1 = (a,b)$, $e_2 = (c,d)$ as stored in the move_
-+ *if* $e_1$ does not exist in either direction *or* $e_2$ does not exist *then*
++ *if* $e_1$ or $e_2$ does not exist in the current tour $x$ (in either direction) *then*
   + broken $->$ remove from $"LM"$
-+ *else if* one edge is stored forward and the other is stored backward *then*
++ *else if* $e_1$ and $e_2$ exist in $x$, but one in the stored direction and the other reversed *then*
   + temporarily inapplicable $->$ skip, keep in $"LM"$
-+ *else*   _\// both forward or both backward_
++ *else*   _\// both exist in the same relative direction (both forward or both backward)_
   + apply 2-opt between the two edges, recompute `next`/`prev`/`route` arrays
 ]
 
-For an inter-route move the check is: both nodes still exist, $u$ is still selected, $v$ is still unselected, and the current neighbours of $u$ are still the saved pair ${u_"prev", u_"next"}$ in either order (a 2-opt move may have reversed that part of the cycle). If any condition fails, the move is broken and is removed.
+For an inter-route move the check is: $u$ is still selected in $x$, $v$ is still unselected, and the current neighbours of $u$ in $x$ are still the saved pair ${u_"prev", u_"next"}$ in either order (a 2-opt move may have reversed that part of the cycle). If any condition fails, the move is broken and is removed.
+
+*NB:* the pseudocode above is the conceptual rule, but in the code all three cases are decided in $O(1)$ from the flat arrays — no search over the tour is involved. The stored edge $(a,b)$ counts as *forward* iff `next_node[a] == b`, and as *backward* iff `prev_node[a] == b`. Therefore:
+- *broken* — at least one of the two stored edges $(a,b)$, $(c,d)$ exists in *neither* direction;
+- *temporarily inapplicable* — both edges still exist, but one is stored forward and the other backward; reconnecting them now would cut the cycle into two separate loops, so the move is skipped but kept in `LM`;
+- *applicable* — both edges still exist in the *same* relative direction (both forward or both backward), so the standard 4-term 2-opt reconnection is valid.
+
+This is exactly why an initially inverted move can become valid later: a 2-opt move reverses a whole segment, so the stored orientation of every edge *inside* that segment flips, and two edges that were oriented oppositely may end up oriented the same way. For an inter-route move the equivalent $O(1)$ test is `selected[u] && !selected[v]` together with `{prev_node[u], next_node[u]} == {u_prev, u_next}`.
 
 === Implementation notes
 
